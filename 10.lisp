@@ -39,17 +39,21 @@
                      :when (member to-direction
                                    (alexandria:assoc-value pipes-from
                                                            (lookup next-pos)))
-                       :collect next-pos)))
-      (let* ((loop-positions
-               (loop :with results := (make-hash-table :test #'equal)
-                     :and prev-pos := nil :and current-pos := start-pos
-                     :for next-pos := (car (remove prev-pos (get-next current-pos)
-                                                   :test #'equal))
-                     :do (setf prev-pos current-pos
-                               current-pos next-pos)
-                     :until (eql (lookup current-pos) #\S)
-                     :do (setf (gethash current-pos results) t)
-                     :finally (return results))))
+                       :collect next-pos))
+             (rotate (l) (append (cdr l) (list (car l)))))
+      (let ((loop-positions
+              (cons start-pos
+                    (loop :with prev-pos := nil :and current-pos := start-pos
+                          :for next-pos := (car (remove prev-pos (get-next current-pos)
+                                                        :test #'equal))
+                          :do (setf prev-pos current-pos
+                                    current-pos next-pos)
+                          :until (eql (lookup current-pos) #\S)
+                          :collect current-pos))))
         (if is-part-two
-            nil
-            (/ (1+ (hash-table-count loop-positions)) 2))))))
+            (let* ((area (/ (abs (loop :for (x1 y1) :in loop-positions
+                                       :for (x2 y2) :in (rotate loop-positions)
+                                       :sum (* (+ y1 y2) (- x1 x2))))
+                            2)))
+              (1+ (- area (/ (length loop-positions) 2))))
+            (/ (length loop-positions) 2))))))
