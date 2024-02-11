@@ -1,0 +1,25 @@
+(ql:quickload :cl-ppcre)
+
+(defun day13 (is-part-two)
+  (let* ((input (uiop:read-file-string #P"./13.txt"))
+         (patterns (mapcar (lambda (p)
+                             (mapcar (lambda (line)
+                                       (coerce line 'list))
+                                     (ppcre:split "\\n" p)))
+                           (ppcre:split "\\n\\n" input))))
+    (labels ((transpose (pattern) (apply #'mapcar #'list pattern))
+             (differences (xs ys)
+               (loop :for x :in xs :for y :in ys :count (not (char= x y))))
+             (get-pattern-sum (pattern smudge-count)
+               (loop :for i :from 1 :below (length pattern)
+                     :for before-rows := (subseq pattern 0 i)
+                     :for after-rows := (subseq pattern i)
+                     :when (eql smudge-count
+                                (loop :for before-row :in (reverse before-rows)
+                                      :for after-row :in after-rows
+                                      :sum (differences before-row after-row)))
+                       :sum i)))
+      (loop :with smudge-count := (if is-part-two 1 0)
+            :for pattern :in patterns
+            :sum (+ (* 100 (get-pattern-sum pattern smudge-count))
+                    (get-pattern-sum (transpose pattern) smudge-count))))))
