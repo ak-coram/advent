@@ -1,0 +1,17 @@
+(ql:quickload :babel)
+(ql:quickload :ironclad/digest/md5)
+
+(defun day04 (is-part-two)
+  (labels ((prepare-md5 (s)
+             (let ((digest (ironclad:make-digest :md5)))
+               (ironclad:update-digest digest (babel:string-to-octets s))
+               (lambda (i)
+                 (let ((d (ironclad:copy-digest digest)))
+                   (ironclad:update-digest d (babel:string-to-octets (format nil "~d" i)))
+                   (subseq (ironclad:byte-array-to-hex-string
+                            (ironclad:produce-digest d))
+                           0 (if is-part-two 6 5)))))))
+    (loop :with md5 := (prepare-md5 (uiop:read-file-line #P"./04.txt"))
+          :for n :from 0 :for hash := (funcall md5 n)
+          :when (every (lambda (c) (char= c #\0)) (funcall md5 n))
+            :return n)))
