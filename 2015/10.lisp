@@ -1,21 +1,18 @@
 (defun day10 (is-part-two)
-  (labels ((count-successive-digits (digits)
+  (labels ((look-and-say (digits)
              (loop :with results := nil :and prev := nil :and count := 0
                    :for d :in digits
                    :when (null prev) :do (setf prev d)
                      :do (if (eql prev d)
                              (incf count)
                              (progn
-                               (push (cons count prev) results)
+                               (push count results)
+                               (push prev results)
                                (setf prev d count 1)))
-                   :finally (return (progn (push (cons count prev) results)
-                                           results))))
-           (look-and-say (s)
-             (loop :with results := nil
-                   :for (digit . count) :in (count-successive-digits s)
-                   :do (push count results)
-                   :do (push digit results)
-                   :finally (return results))))
+                   :finally (return (progn
+                                      (push count results)
+                                      (push prev results)
+                                      (nreverse results))))))
     (loop :with acc
             := (mapcar #'digit-char-p (coerce (uiop:read-file-line #P"./10.txt")
                                               'list))
