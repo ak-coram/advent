@@ -31,7 +31,7 @@
                  (-1 '(-1 . 0))         ; left -> up
                  ( 1 '( 1 . 0))         ; right -> down
                  )))
-         (walk (grid)
+         (walk (grid &optional (collect-visited-positions t))
            (loop :with visits
                    := (fset:with (fset:empty-set)
                                  (cons start initial-direction))
@@ -47,14 +47,15 @@
                    :do (setf direction (rotate direction))
                  :else :do (setf current next
                                  visits (register-visit visits next direction))
-                 :finally (return (values (get-visited-positions visits)
+                 :finally (return (values (when collect-visited-positions
+                                            (get-visited-positions visits))
                                           is-on-grid)))))
       (if is-part-two
           (let ((visited-positions (walk original-grid))
                 (count 0))
             (fset:do-set (position (fset:less visited-positions start))
               (multiple-value-bind (_ is-loop)
-                  (walk (fset:with original-grid position t))
+                  (walk (fset:with original-grid position t) nil)
                 (declare (ignore _))
                 (when is-loop (incf count))))
             count)
