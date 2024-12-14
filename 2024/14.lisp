@@ -17,14 +17,34 @@
                                  (cond ((and (< x qx) (< y qy)) 1)
                                        ((and (< qx x) (< y qy)) 2)
                                        ((and (< x qx) (< qy y)) 3)
-                                       ((and (< qx x) (< qy y)) 4)))))
+                                       ((and (< qx x) (< qy y)) 4))))
+             (variance (positions)
+               (let* ((n (fset:size positions))
+                      (sums (fset:reduce (lambda (acc position)
+                                           (cons (+ (car acc) (car position))
+                                                 (+ (cdr acc) (cdr position))))
+                                         positions
+                                         :initial-value (cons 0 0)))
+                      (x-sum (car sums)) (y-sum (cdr sums))
+                      (x-mean (/ x-sum n)) (y-mean (/ y-sum n))
+                      (result 0))
+                 (fset:do-set (position positions result)
+                   (let* ((x (car position)) (y (cdr position))
+                          (dx (- x x-mean)) (dy (- y y-mean)))
+                     (incf result (/ (* dx dx) n))
+                     (incf result (/ (* dy dy) n))))))
+             (robot-positions (n)
+               (loop :with positions := (fset:empty-set)
+                     :for robot :in robots
+                     :do (fset:includef positions (move robot n))
+                     :finally (return positions))))
       (if is-part-two
-          (loop :with l := (length robots) :for n :from 1
-                :for positions
-                  := (mapcar (lambda (robot) (move robot n)) robots)
-                :when (eql l (length (remove-duplicates positions
-                                                        :test #'equal)))
-                  :do (return n))
+          (loop :with variances := (fset:empty-map)
+                :for n :from 0 :for positions := (robot-positions n)
+                :until (fset:lookup variances positions)
+                :do (fset:includef variances positions
+                                   (cons (variance positions) n))
+                :finally (return (cdr (fset:least (fset:range variances)))))
           (loop :with quadrants := (fset:empty-bag) :and safety-factor := 1
                 :for robot :in robots
                 :for quadrant := (get-quadrant (move robot 100))
