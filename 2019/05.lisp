@@ -1,0 +1,60 @@
+(ql:quickload :fset)
+
+(defstruct state memory ip inputs outputs)
+
+(defun day05 (is-part-two)
+  (let ((program (fset:empty-seq)))
+    (loop :for s :in (uiop:split-string (uiop:read-file-line #P"./05.txt")
+                                        :separator '(#\,))
+          :do (fset:push-last program (parse-integer s)))
+    (macrolet ((@ (p) `(fset:lookup (state-memory state) ,p))
+               (! (v) `(fset:includef (state-memory state)
+                                      (@ (+ (state-ip state)
+                                            (parameter-count (car op))))
+                                      ,v))
+               (let-params (vars &rest body)
+                 `(destructuring-bind ,vars
+                      (loop :for j :from 1 :upto ,(length vars)
+                            :for mode :in (cdr op)
+                            :for p := (@ (+ (state-ip state) j))
+                            :collect (ecase mode
+                                       (:position (@ p))
+                                       (:immediate p)))
+                    (when (progn ,@body)
+                      (incf (state-ip state) (1+ (parameter-count (car op)))))))
+               (jump (boolean ip) `(not (when ,boolean
+                                          (setf (state-ip state) ,ip)))))
+      (labels ((parameter-count (op-code)
+                 (ecase op-code
+                   ((:add :mul :lt :eql) 3) ((:jnz :jz) 2)
+                   ((:in :out) 1) (:hcf 0)))
+               (parse-mode (mode-code)
+                 (ecase mode-code (0 :position) (1 :immediate)))
+               (parse-op (i)
+                 (let ((op (ecase (mod i 100)
+                             (1 :add) (2 :mul) (3 :in) (4 :out)
+                             (5 :jnz) (6 :jz) (7 :lt) (8 :eql) (99 :hcf))))
+                   (loop :for j :below (parameter-count op)
+                         :for n := (floor i 100) :then next-n
+                         :for (next-n mode-code)
+                           := (multiple-value-list (floor n 10))
+                         :collect (parse-mode mode-code) :into result
+                         :finally (return (cons op result)))))
+               (exec (state)
+                 (loop :for op := (parse-op (@ (state-ip state)))
+                       :do (ecase (car op)
+                             (:add (let-params (a b) (! (+ a b))))
+                             (:mul (let-params (a b) (! (* a b))))
+                             (:jz (let-params (a b) (jump (zerop a) b)))
+                             (:jnz (let-params (a b) (jump (not (zerop a)) b)))
+                             (:lt (let-params (a b) (! (if (< a b) 1 0))))
+                             (:eql (let-params (a b) (! (if (eql a b) 1 0))))
+                             (:in
+                              (! (pop (state-inputs state)))
+                              (incf (state-ip state) 2))
+                             (:out
+                              (let-params (a) (push a (state-outputs state))))
+                             (:hcf (return (car (state-outputs state))))))))
+        (exec (make-state :memory program :ip 0
+                          :inputs (list (if is-part-two 5 1))
+                          :outputs nil))))))
