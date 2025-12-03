@@ -1,0 +1,20 @@
+(defun day03 (is-part-two)
+  (labels ((slice (bank i)
+             (make-array (- (length bank) i)
+                         :element-type '(unsigned-byte 8)
+                         :displaced-to bank
+                         :displaced-index-offset i))
+           (recur (bank n)
+             (if (zerop n)
+                 0
+                 (loop :with max := 0 :and max-index := 0 :and next-n := (1- n)
+                       :for i :from 0 :upto (- (length bank) n)
+                       :for d :across bank
+                       :when (< max d)
+                         :do (setf max d max-index i)
+                       :finally (return (+ (* max (expt 10 next-n))
+                                           (recur (slice bank (1+ max-index))
+                                                  next-n)))))))
+    (loop :for line :in (uiop:read-file-lines #P"03.txt")
+          :for bank := (map '(vector (unsigned-byte 8)) #'digit-char-p line)
+          :sum (recur bank (if is-part-two 12 2)))))
