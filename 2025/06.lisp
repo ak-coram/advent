@@ -1,0 +1,46 @@
+(ql:quickload :cl-ppcre)
+
+(defun day06 (is-part-two)
+  (labels ((find-column-indices (lines)
+             (let ((column-indices nil))
+               (dotimes (i (reduce #'max lines :key #'length)
+                           (nreverse column-indices))
+                 (when (every (lambda (line)
+                                (and (< i (length line))
+                                     (char= (char line i) #\Space)))
+                              lines)
+                   (push i column-indices)))))
+           (split-at (line column-indices)
+             (let ((parts nil) (pos 0))
+               (dolist (column-index column-indices)
+                 (when (< pos column-index)
+                   (push (subseq line pos column-index) parts))
+                 (setf pos (1+ column-index)))
+               (when (< pos (length line))
+                 (push (subseq line pos) parts))
+               (nreverse parts)))
+           (parse-vertical-numbers (cells)
+             (loop :for i :from 0 :below (reduce #'max cells :key #'length)
+                   :collect
+                   (loop :for cell :in cells
+                         :when (and (< i (length cell))
+                                    (digit-char-p (char cell i)))
+                           :collect (char cell i) :into result
+                         :finally (return (coerce result 'string))))))
+    (let* ((lines (uiop:read-file-lines #P"./06.txt"))
+           (op-line (car (last lines)))
+           (ops (loop :for op :in (ppcre:split "\\s+" op-line)
+                      :collect (cond
+                                 ((string= "+" op) #'+)
+                                 ((string= "*" op) #'*))))
+           (arg-lines (butlast lines))
+           (column-indices (find-column-indices arg-lines))
+           (rows (mapcar (lambda (line) (split-at line column-indices))
+                         arg-lines))
+           (transposed-rows (apply #'mapcar #'list rows)))
+      (loop :for op :in ops
+            :for args :in (if is-part-two
+                              (mapcar #'parse-vertical-numbers
+                                      transposed-rows)
+                              transposed-rows)
+            :sum (apply op (mapcar #'parse-integer args))))))
